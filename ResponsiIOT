@@ -1,0 +1,116 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+#include <Servo.h>
+
+// Inisialisasi LCD I2C (alamat default 0x27)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Pin sensor DHT22
+#define DHTPIN 13
+#define DHTTYPE DHT22
+
+// Inisialisasi DHT
+DHT dht(DHTPIN, DHTTYPE);
+// Pin tambahan
+#define LED_PIN 7
+#define RELAY_PIN 8
+
+// Deklarasi pin untuk sensor ultrasonik
+#define TRIG_PIN 9
+#define ECHO_PIN 10
+
+// Deklarasi servo motor
+Servo myServo;
+#define SERVO_PIN 6
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+
+  // Inisialisasi LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Pemantauan Suhu");
+  lcd.setCursor(0, 1);
+  lcd.print("& Kelembaban");
+  delay(3000);
+  lcd.clear();
+
+  // Inisialisasi dan Relay
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW); // Matikan Relay saat start
+
+  // Inisialisasi pin ultrasonik
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  // Inisialisasi servo
+  myServo.attach(SERVO_PIN);
+  myServo.write(0); // Servo dalam posisi awal (0 derajat)
+}
+
+void loop() {
+  checkTemperatureAndHumadity();
+  checkSensorUltrasonic();
+  delay(500);
+}
+
+
+void checkTemperatureAndHumadity() {
+  // Membaca data suhu dan kelembaban
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature(); // Celcius
+
+  // Periksa apakah pembacaan valid
+  if (isnan(humidity) || isnan(temperature)) {
+    lcd.setCursor(0, 0);
+    lcd.print("Sensor Error");
+    return;
+  }
+
+  // Tampilkan suhu dan kelembaban di LCD
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(temperature);
+  lcd.print((char)223); // Simbol derajat
+  lcd.print("C");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Hum: ");
+  lcd.print(humidity);
+  lcd.print("%");
+
+  // Logika untuk LED dan Relay
+  if (temperature > 25) {
+    digitalWrite(RELAY_PIN, HIGH); // Aktifkan Relay
+  } else {
+    digitalWrite(RELAY_PIN, LOW); // Nonaktifkan Relay
+  }
+}
+
+void checkSensorUltrasonic() {
+  // Mengukur jarak menggunakan sensor ultrasonik
+  long duration, distance;
+
+  // Mengirimkan sinyal trigger
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  // Membaca sinyal echo
+  duration = pulseIn(ECHO_PIN, HIGH);
+
+  // Menghitung jarak dalam cm
+  distance = duration * 0.034 / 2;
+
+  // Logika kontrol servo
+  if (distance <= 40 && distance > 0) { // Jika jarak 40 cm atau kurang
+    myServo.write(90); // Servo bergerak ke posisi 90 derajat
+  } else {
+    myServo.write(0); // Servo kembali ke posisi 0 derajat
+  }
+}
