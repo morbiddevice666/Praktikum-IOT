@@ -57,7 +57,6 @@ void loop() {
   delay(500);
 }
 
-
 void checkTemperatureAndHumadity() {
   // Membaca data suhu dan kelembaban
   float humidity = dht.readHumidity();
@@ -114,3 +113,4 @@ void checkSensorUltrasonic() {
     myServo.write(0); // Servo kembali ke posisi 0 derajat
   }
 }
+
